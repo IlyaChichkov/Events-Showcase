@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 using UES;
 
@@ -38,14 +39,22 @@ class EventsRegister
         List<UES.Event> _events = new List<UES.Event>();
         Debug.Log($"Register Commands!");
 
-        var types = AppDomain.CurrentDomain.GetAssemblies()
+        MethodInfo[] methods = AppDomain.CurrentDomain.GetAssemblies()
                     .SelectMany(s => s.GetTypes())
-                    .Where(p => typeof(object).IsAssignableFrom(p));
+                    .Where(p => typeof(object).IsAssignableFrom(p)).SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic))
+                    .Where(m => m.GetCustomAttributes(typeof(ConsoleCommandAttribute), false).Length > 0)
+                    .ToArray();
 
-        var methods = types
-                      .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic))
-                      .Where(m => m.GetCustomAttributes(typeof(ConsoleCommandAttribute), false).Length > 0)
-                      .ToArray();
+        /*
+var types = AppDomain.CurrentDomain.GetAssemblies()
+      .SelectMany(s => s.GetTypes())
+      .Where(p => typeof(object).IsAssignableFrom(p));
+
+var methods = types
+        .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic))
+        .Where(m => m.GetCustomAttributes(typeof(ConsoleCommandAttribute), false).Length > 0)
+        .ToArray();
+        */
 
         Debug.Log("> Methods:");
         foreach (var method in methods)
@@ -78,10 +87,47 @@ class EventsRegister
         return _events;
     }
 
+    static public async Task<List<UES.Event>> RegisterCommandsAsync()
+    {
+        List<UES.Event> _events = new List<UES.Event>();
+        /*
+                MethodInfo[] methods = AppDomain.CurrentDomain.GetAssemblies()
+                            .SelectMany(s => s.GetTypes())
+                            .Where(p => typeof(object).IsAssignableFrom(p)).SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic))
+                            .Where(m => m.GetCustomAttributes(typeof(ConsoleCommandAttribute), false).Length > 0)
+                            .ToArray();*/
+        Assembly assembly = Assembly.Load("Assembly-CSharp");
+        MethodInfo[] methods = assembly.GetTypes()
+                                .Where(p => typeof(object).IsAssignableFrom(p)).SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic))
+                                .Where(m => m.GetCustomAttributes(typeof(ConsoleCommandAttribute), false).Length > 0)
+                                .ToArray();
+
+        foreach (var method in methods)
+        {
+            var attribute = method.GetCustomAttribute<ConsoleCommandAttribute>();
+            if (attribute != null)
+            {
+                string commandName = attribute.CommandName;
+                string commandGroup = attribute.CommandGroup;
+                string commandDescription = attribute.CommandDescription;
+
+                if (_events.FindIndex(ev => ev.GetName() == commandName) >= 0)
+                {
+                    Debug.LogWarning($"Already exist.");
+                    continue;
+                }
+                UES.Event ev = new UES.Event(commandName, method, commandGroup, commandDescription);
+
+                _events.Add(ev);
+            }
+        }
+        return _events;
+    }
 }
 
 namespace UES
 {
+    [System.Serializable]
     public class Event
     {
         private string _name;
@@ -90,6 +136,7 @@ namespace UES
         private List<UnityEngine.Object> _objects;
         public MethodInfo method;
         private string command_parameters = "";
+        private Dictionary<string, string> _parameters;
 
         public Event(string name, MethodInfo method, string group = "default", string description = "")
         {
@@ -98,6 +145,17 @@ namespace UES
             this.method = method;
             this.description = description;
             SetMethodParameters();
+        }
+        public Event(string name, string group, string description, string command_parameters)
+        {
+            _name = name;
+            _group = group;
+            this.description = description;
+            this.command_parameters = command_parameters;
+        }
+        public void SetMethodParameters(Dictionary<string, string> parameters)
+        {
+            _parameters = new Dictionary<string, string>(parameters);
         }
 
         public void AddObject(UnityEngine.Object obj)
@@ -121,6 +179,11 @@ namespace UES
         public string GetCommandParameters()
         {
             return command_parameters;
+        }
+
+        public bool HasObjets()
+        {
+            return _objects != null;
         }
 
         public List<UnityEngine.Object> GetObjets()
@@ -169,10 +232,126 @@ namespace UES
                 Debug.Log(ev.GetName());
             }
         }
-
-        public void LoadEvents()
+        public async void FullEventsReload(Action afterLoadAction)
         {
-            _events = new List<Event>(EventsRegister.RegisterCommands());
+            Task load = Task.Run(async () =>
+            {
+                await AsyncLoad();
+            });
+            await load;
+
+            foreach (var ev in _events)
+            {
+                Type methodType = ev.method.DeclaringType;
+                if (methodType.IsSubclassOf(typeof(UnityEngine.Object)))
+                {
+                    UnityEngine.Object[] objects = MonoBehaviour.FindObjectsOfType(methodType);
+                    ev.SetObjects(objects);
+                }
+            }
+
+            Debug.Log("UES: Full Events Reload Complete.");
+            afterLoadAction.Invoke();
+
+            Task saveJson = Task.Run(async () =>
+            {
+                await ESJson.SaveEventsAsyncJSON(_events);
+            });
+            await saveJson;
+        }
+        public void LoadEvents(bool fullReload = false)
+        {
+            if (fullReload)
+            {
+                FullEventsReload(null);
+            }
+            else
+            {
+                _events = new List<Event>(ESJson.LoadEventsJSON());
+            }
+        }
+        public delegate void LoadProgressChanged(int value);
+        public LoadProgressChanged OnLoadChanged;
+
+        private async Task AsyncLoad()
+        {
+            Debug.Log("Start AsyncLoad.");
+
+            System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
+
+            stopwatch.Start();
+
+            var evts = await EventsRegister.RegisterCommandsAsync();
+
+            stopwatch.Stop();
+
+            long elapsedTimeMs = stopwatch.ElapsedMilliseconds;
+            Debug.Log($"End AsyncLoad. Time: {elapsedTimeMs} ms");
+            _events = new List<Event>(evts);
+        }
+
+        private Vector2 Vector2Parce(string value)
+        {
+            value = value.Replace('(', ' ');
+            value = value.Replace(')', ' ');
+            value = value.Replace(" ", "");
+            Debug.Log(value);
+            var coords = value.Split(',');
+            Debug.Log(coords[0]);
+            Debug.Log(coords[1]);
+            Vector2 result = new Vector2(float.Parse(coords[0]), float.Parse(coords[1]));
+            Debug.Log(result);
+            return result;
+        }
+        public void ExecuteCommand(string commandString, string objectName)
+        {
+            Debug.Log($"UES: '{commandString}'");
+            if (commandString == "rst")
+            {
+                Debug.Log($"UES: Reset project events.");
+                LoadEvents();
+                return;
+            }
+
+            var parts = commandString.Split(';');
+            var commandName = parts[0];
+            Event ev = _events.Find(ev => ev.GetName() == commandName);
+            if (ev == null)
+            {
+                Debug.LogWarning("UES: No such command!");
+                // обработка неверной команды
+                return;
+            }
+            var method = ev.method;
+
+            var parameters = method.GetParameters();
+            if (parameters.Length != parts.Length - 1)
+            {
+                Debug.LogWarning("UES: Wrong number of parameters!");
+                // обработка неверного числа параметров
+                return;
+            }
+
+            var arguments = new object[parameters.Length];
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                var parameterType = parameters[i].ParameterType;
+                var argumentString = parts[i + 1];
+                Debug.Log(parameterType);
+                if (parameterType == typeof(Vector2))
+                {
+                    argumentString = argumentString.Replace('(', ' ');
+                    argumentString = argumentString.Replace(')', ' ');
+                    argumentString = argumentString.Replace(" ", "");
+                    arguments[i] = Convert.ChangeType(StringToVectorParser.ParseToVector2(argumentString), parameterType);
+                    continue;
+                }
+                object argument = Convert.ChangeType(argumentString, parameterType);
+                arguments[i] = argument;
+            }
+
+            UnityEngine.Object target = ev.GetObjets().FirstOrDefault(obj => obj.name == objectName);
+            method.Invoke(target, arguments);
         }
         public void ExecuteCommand(string commandString)
         {
@@ -220,9 +399,16 @@ namespace UES
             }
             if (parts[1] == "all")
             {
-                foreach (UnityEngine.Object obj in ev.GetObjets())
+                if (ev.HasObjets())
                 {
-                    method.Invoke(obj, arguments);
+                    foreach (UnityEngine.Object obj in ev.GetObjets())
+                    {
+                        method.Invoke(obj, arguments);
+                    }
+                }
+                else
+                {
+                    method.Invoke(Activator.CreateInstance(method.DeclaringType), arguments);
                 }
             }
             else
@@ -258,7 +444,10 @@ namespace UES
             return _events.Select(ev => ev.GetGroup()).Distinct().ToArray();
         }
 
-
+        public List<Event> GetEventsList()
+        {
+            return _events;
+        }
         public Event? GetCommandEvent(string command)
         {
             return _events.FirstOrDefault(ev => ev.GetName() == command);
