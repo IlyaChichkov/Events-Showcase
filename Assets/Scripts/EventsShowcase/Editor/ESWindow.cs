@@ -64,15 +64,20 @@ public class ESWindow : EditorWindow
             case "Vector3Int":
                 inputField = new Vector3IntField(name);
                 break;
+            case "Object":
+                inputField = new ObjectField(name);
+                break;
             default:
                 inputField = new TextField(name);
                 break;
         }
         return inputField;
     }
-
+    private MyUILibrary.ObjectTogglesView objectsView;
+    private string selectedCommand = "";
     private void SetCommandParametersPopup(List<Object> targetObjects, string parametersString)
     {
+        Debug.Log("> " + parametersString);
         var parameters = parametersString.Split(';');
 
         VisualElement parameters_window = root.Query<VisualElement>("command-parameters");
@@ -95,25 +100,84 @@ public class ESWindow : EditorWindow
                 choices.Add(targetObject.name);
             }
         }
-        DropdownField objectChoose = new DropdownField("Choose objects:", choices, 0);
-        parameters_window.Add(objectChoose);
+
+        objectsView = new MyUILibrary.ObjectTogglesView(choices.ToArray());
+        parameters_window.Add(objectsView);
+
+        Button exec_command_btn = new Button(ExecCommand);
+        exec_command_btn.text = "Execute";
+        parameters_window.Add(exec_command_btn);
     }
 
-    public void CreateGUI()
+    private string GetParameterElementValue(VisualElement element)
     {
+        string val = "";
+
+        if (element is TextField)
+        {
+            TextField field = (TextField)element;
+            return field.value;
+        }
+        if (element is IntegerField)
+        {
+            IntegerField field = (IntegerField)element;
+            return field.value.ToString();
+        }
+        if (element is LongField)
+        {
+            LongField field = (LongField)element;
+            return field.value.ToString();
+        }
+        if (element is DoubleField)
+        {
+            DoubleField field = (DoubleField)element;
+            return field.value.ToString();
+        }
+        if (element is FloatField)
+        {
+            FloatField field = (FloatField)element;
+            return field.value.ToString();
+        }
+        if (element is Vector2Field)
+        {
+            Vector2Field field = (Vector2Field)element;
+            return field.value.ToString();
+        }
+        Debug.LogWarning("UES: Warning! No such parameter type implimented yet! Type: " + element.GetType());
+        return val;
+    }
+
+    private void ExecCommand()
+    {
+        VisualElement command_setup = root.Query<VisualElement>("command-setup");
+        command_setup.style.display = DisplayStyle.None;
+
+        string inputParameters = "";
+
+        foreach (var parameterInput in commandParametersInputs)
+        {
+            inputParameters += GetParameterElementValue(parameterInput) + ";";
+        }
+        inputParameters = inputParameters.TrimEnd(';');
+
+        Debug.Log(inputParameters);
+        string[] targets = objectsView.GetEnabledObjects();
+        if (targets[0] == "all")
+        {
+            UES.EventManager.Instance.ExecuteCommand(selectedCommand + " all");
+            return;
+        }
+        foreach (var item in targets)
+        {
+            Debug.Log(item + " " + selectedCommand);
+            UES.EventManager.Instance.ExecuteCommand(selectedCommand + ";" + inputParameters, item);
+        }
+    }
+
+    private void UpdateEventsList()
+    {
+        Debug.Log("UES: Update Events List!");
         var ESManager = UES.EventManager.Instance;
-        Debug.Log("CreateGUI");
-        // Each editor window contains a root VisualElement object
-        root = rootVisualElement;
-
-        // Import UXML
-        var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UES_Window.uxml");
-        VisualElement FromUXML = visualTree.Instantiate();
-        root.Add(FromUXML);
-
-        Button btn_reload = root.Query<Button>("btn-reload");
-        btn_reload.clicked += ESManager.LoadEvents;
-
         VisualElement events_container = root.Query<VisualElement>("events-container");
         events_container.Clear();
 
@@ -133,6 +197,10 @@ public class ESWindow : EditorWindow
         {
             Foldout fd = new Foldout();
             fd.text = group;
+            VisualElement btns_container = new VisualElement();
+            btns_container.style.flexDirection = FlexDirection.Row;
+            btns_container.style.flexWrap = Wrap.Wrap;
+
 
             foreach (var ev in ESManager.GetEventsByGroup(group))
             {
@@ -141,13 +209,34 @@ public class ESWindow : EditorWindow
                 {
                     command_setup.style.display = DisplayStyle.Flex;
                     SetCommandParametersPopup(ev.GetObjets(), ev.GetCommandParameters());
+                    selectedCommand = command;
                 });
                 //command-setup
                 btn.text = command;
-                fd.Add(btn);
+                btn.style.flexShrink = 0;
+                btns_container.Add(btn);
             }
+            fd.Add(btns_container);
             events_container.Add(fd);
         }
+    }
+    public void CreateGUI()
+    {
+        Debug.Log("CreateGUI");
+        // Each editor window contains a root VisualElement object
+        root = rootVisualElement;
 
+        // Import UXML
+        var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Uxml_Assets/UES_Window.uxml");
+        VisualElement FromUXML = visualTree.Instantiate();
+        root.Add(FromUXML);
+
+        Button btn_reload = root.Query<Button>("btn-reload");
+        btn_reload.clicked += delegate
+        {
+            UES.EventManager.Instance.FullEventsReload(delegate { UpdateEventsList(); });
+        };
+
+        UpdateEventsList();
     }
 }
