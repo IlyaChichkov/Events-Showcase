@@ -2,6 +2,26 @@ using UnityEngine;
 
 public static class StringToVectorParser
 {
+    public static void ParseToVector<T>(string str, out T vec)
+    {
+        vec = default(T);
+        if (typeof(T) == typeof(Vector2))
+        {
+            vec = (T)(object)ParseToVector2(str);
+        }
+        if (typeof(T) == typeof(Vector2Int))
+        {
+            vec = (T)(object)ParseToVector2Int(str);
+        }
+        if (typeof(T) == typeof(Vector3))
+        {
+            vec = (T)(object)ParseToVector3(str);
+        }
+        if (typeof(T) == typeof(Vector3Int))
+        {
+            vec = (T)(object)ParseToVector3Int(str);
+        }
+    }
     public static Vector2 ParseToVector2(string str)
     {
         Debug.Log(str);
