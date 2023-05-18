@@ -165,6 +165,12 @@ namespace UES
 
         public void SetObjects(UnityEngine.Object[] objects)
         {
+            Debug.Log($"Set objects to {_name}");
+            foreach (var item in objects)
+            {
+                Debug.Log($"-> object {item.name}");
+            }
+            if (objects.Length < 1) return;
             _objects = objects.ToList();
         }
 
@@ -290,22 +296,27 @@ namespace UES
             _events = new List<Event>(evts);
         }
 
-        private Vector2 Vector2Parce(string value)
+        private object AssignArgument(string argumentString, Type parameterType)
         {
-            value = value.Replace('(', ' ');
-            value = value.Replace(')', ' ');
-            value = value.Replace(" ", "");
-            Debug.Log(value);
-            var coords = value.Split(',');
-            Debug.Log(coords[0]);
-            Debug.Log(coords[1]);
-            Vector2 result = new Vector2(float.Parse(coords[0]), float.Parse(coords[1]));
-            Debug.Log(result);
-            return result;
+            string vectorArgument = argumentString.Replace('(', ' ').Replace(')', ' ').Replace(" ", "");
+
+            if (parameterType == typeof(Vector2))
+            {
+                Vector2 vector;
+                StringToVectorParser.ParseToVector<Vector2>(vectorArgument, out vector);
+                return vector;
+            }
+            if (parameterType == typeof(Vector3))
+            {
+                Vector3 vector;
+                StringToVectorParser.ParseToVector<Vector3>(vectorArgument, out vector);
+                return vector;
+            }
+            return Convert.ChangeType(argumentString, parameterType);
         }
         public void ExecuteCommand(string commandString, string objectName)
         {
-            Debug.Log($"UES: '{commandString}'");
+            Debug.Log($"UES: '{commandString}' --> {objectName}");
             if (commandString == "rst")
             {
                 Debug.Log($"UES: Reset project events.");
@@ -327,7 +338,7 @@ namespace UES
             var parameters = method.GetParameters();
             if (parameters.Length != parts.Length - 1)
             {
-                Debug.LogWarning("UES: Wrong number of parameters!");
+                Debug.LogWarning("UES: Wrong number of parameters! Should be: " + parameters.Length);
                 // обработка неверного числа параметров
                 return;
             }
@@ -337,20 +348,11 @@ namespace UES
             {
                 var parameterType = parameters[i].ParameterType;
                 var argumentString = parts[i + 1];
-                Debug.Log(parameterType);
-                if (parameterType == typeof(Vector2))
-                {
-                    argumentString = argumentString.Replace('(', ' ');
-                    argumentString = argumentString.Replace(')', ' ');
-                    argumentString = argumentString.Replace(" ", "");
-                    arguments[i] = Convert.ChangeType(StringToVectorParser.ParseToVector2(argumentString), parameterType);
-                    continue;
-                }
-                object argument = Convert.ChangeType(argumentString, parameterType);
-                arguments[i] = argument;
+                arguments[i] = AssignArgument(argumentString, parameterType);
             }
 
             UnityEngine.Object target = ev.GetObjets().FirstOrDefault(obj => obj.name == objectName);
+            Debug.Log("Target: " + target.name);
             method.Invoke(target, arguments);
         }
         public void ExecuteCommand(string commandString)
@@ -363,7 +365,7 @@ namespace UES
                 return;
             }
 
-            var parts = commandString.Split(' ');
+            var parts = commandString.Split(';');
             var commandName = parts[0];
             Event ev = _events.Find(ev => ev.GetName() == commandName);
             if (ev == null)
@@ -387,35 +389,43 @@ namespace UES
             {
                 var parameterType = parameters[i].ParameterType;
                 var argumentString = parts[i + 2];
-                var argument = Convert.ChangeType(argumentString, parameterType);
+                var argument = AssignArgument(argumentString, parameterType);
                 arguments[i] = argument;
             }
 
             UnityEngine.Object target = null;
             if (method.IsStatic)
             {
+                Debug.Log("UES: method.IsStatic.");
                 method.Invoke(target, arguments);
                 return;
             }
             if (parts[1] == "all")
             {
+                Type declaringType = method.DeclaringType;
                 if (ev.HasObjets())
                 {
+                    Debug.Log($"UES: {ev.GetObjets().Count}");
                     foreach (UnityEngine.Object obj in ev.GetObjets())
                     {
+                        Debug.Log("Target: " + obj.name);
                         method.Invoke(obj, arguments);
                     }
                 }
-                else
+                else if (declaringType.BaseType != typeof(MonoBehaviour))
                 {
-                    method.Invoke(Activator.CreateInstance(method.DeclaringType), arguments);
+                    Debug.Log("No target. Creating object.");
+                    method.Invoke(Activator.CreateInstance(declaringType), arguments);
                 }
+                Debug.LogWarning("UES: No objects to executed command.");
+                return;
             }
             else
             {
                 target = ev.GetObjets().FirstOrDefault(obj => obj.name == parts[1]);
                 if (target)
                 {
+                    Debug.Log("Target: " + target.name);
                     method.Invoke(target, arguments);
                 }
                 else
@@ -423,6 +433,7 @@ namespace UES
                     Debug.LogWarning("UES: No object with such name to apply!");
                 }
             }
+            Debug.Log("UES: Command executed.");
         }
 
         public string[] GetCommands()
