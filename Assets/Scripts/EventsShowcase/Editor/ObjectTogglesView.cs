@@ -62,7 +62,7 @@ namespace MyUILibrary
 
         public string[] GetEnabledObjects()
         {
-            if (m_TogglesList.Any(obj => obj.GetLabel() == "All"))
+            if (m_TogglesList.Any(obj => obj.GetLabel() == "All" && obj.value == true))
             {
                 return new string[] { "all" };
             }
