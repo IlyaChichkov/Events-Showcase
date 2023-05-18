@@ -1,0 +1,95 @@
+.slide-toggle__input {
+    background-color: rgb(70, 70, 70);
+    min-width: auto;
+    min-height: auto;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    overflow: visible;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-right-color: rgb(22, 20, 43);
+    border-top-color: rgb(22, 20, 43);
+    border-bottom-color: rgb(22, 20, 43);
+    margin-top: 0;
+    border-left-color: rgb(22, 20, 43);
+    transition-property: background-color;
+    transition-duration: 0.2s;
+    flex-shrink: 0;
+    max-height: none;
+    max-width: initial;
+    position: relative;
+    left: initial;
+    top: initial;
+    right: initial;
+    bottom: initial;
+    flex-grow: 1;
+    padding-left: 6px;
+    padding-right: 6px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.slide-toggle__label {
+    position: relative;
+    flex-grow: 0;
+    flex-shrink: 1;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    -unity-text-align: middle-center;
+    font-size: 12px;
+    -unity-font-style: normal;
+}
+
+.slide-toggle__input-knob {
+    display: none;
+    height: 16px;
+    width: 16px;
+    background-color: var(--unity-colors-slider_thumb-background);
+    position: absolute;
+    border-top-left-radius: 25px;
+    border-bottom-left-radius: 25px;
+    border-top-right-radius: 25px;
+    border-bottom-right-radius: 25px;
+    top: -1px;
+    transition-property: translate, background-color;
+    transition-duration: 0.5s, 0.5s;
+    translate: -1px 0;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--unity-colors-slider_thumb-border);
+    border-right-color: var(--unity-colors-slider_thumb-border);
+    border-top-color: var(--unity-colors-slider_thumb-border);
+    border-bottom-color: var(--unity-colors-slider_thumb-border);
+}
+
+.slide-toggle__input--checked {
+    background-color: rgb(25, 30, 75);
+}
+
+.slide-toggle__input--checked > .slide-toggle__input-knob {
+    translate: 8px 0;
+}
+
+.slide-toggle:focus .slide-toggle__input-knob {
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--unity-colors-input_field-border-focus);
+    border-right-color: var(--unity-colors-input_field-border-focus);
+    border-top-color: var(--unity-colors-input_field-border-focus);
+    border-bottom-color: var(--unity-colors-input_field-border-focus);
+}
+
+.objecttoggles-view {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
