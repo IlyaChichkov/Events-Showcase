@@ -77,7 +77,6 @@ public class ESWindow : EditorWindow
     private string selectedCommand = "";
     private void SetCommandParametersPopup(List<Object> targetObjects, string parametersString)
     {
-        Debug.Log("> " + parametersString);
         var parameters = parametersString.Split(';');
 
         VisualElement parameters_window = root.Query<VisualElement>("command-parameters");
@@ -143,6 +142,11 @@ public class ESWindow : EditorWindow
             Vector2Field field = (Vector2Field)element;
             return field.value.ToString();
         }
+        if (element is Vector3Field)
+        {
+            Vector3Field field = (Vector3Field)element;
+            return field.value.ToString();
+        }
         Debug.LogWarning("UES: Warning! No such parameter type implimented yet! Type: " + element.GetType());
         return val;
     }
@@ -160,17 +164,26 @@ public class ESWindow : EditorWindow
         }
         inputParameters = inputParameters.TrimEnd(';');
 
-        Debug.Log(inputParameters);
+        Debug.Log($"[{inputParameters}]");
         string[] targets = objectsView.GetEnabledObjects();
         if (targets[0] == "all")
         {
-            UES.EventManager.Instance.ExecuteCommand(selectedCommand + " all");
+            string command = selectedCommand + ";all";
+            if (inputParameters != "")
+            {
+                command += ";" + inputParameters;
+            }
+            UES.EventManager.Instance.ExecuteCommand(command);
             return;
         }
-        foreach (var item in targets)
+        foreach (var target in targets)
         {
-            Debug.Log(item + " " + selectedCommand);
-            UES.EventManager.Instance.ExecuteCommand(selectedCommand + ";" + inputParameters, item);
+            string command = selectedCommand;
+            if (inputParameters != "")
+            {
+                command += ";" + inputParameters;
+            }
+            UES.EventManager.Instance.ExecuteCommand(command, target);
         }
     }
 
@@ -195,6 +208,7 @@ public class ESWindow : EditorWindow
 
         foreach (var group in ESManager.GetGroups())
         {
+            Debug.Log(group);
             Foldout fd = new Foldout();
             fd.text = group;
             VisualElement btns_container = new VisualElement();
@@ -229,6 +243,7 @@ public class ESWindow : EditorWindow
         // Import UXML
         var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Uxml_Assets/UES_Window.uxml");
         VisualElement FromUXML = visualTree.Instantiate();
+        FromUXML.style.flexGrow = 1;
         root.Add(FromUXML);
 
         Button btn_reload = root.Query<Button>("btn-reload");
