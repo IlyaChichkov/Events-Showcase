@@ -31,6 +31,12 @@ public class PlayerMovement : MonoBehaviour
         speed = _spd;
     }
 
+    [ConsoleCommand("set-position")]
+    private void SetPosition(Vector2 pos)
+    {
+        transform.position = pos;
+    }
+
     [ConsoleCommand("set-name")]
     private void SetName(string name)
     {
@@ -62,7 +68,7 @@ public class PlayerMovement : MonoBehaviour
 
     }
 
-    [ConsoleCommand("move-left", "move")]
+    [ConsoleCommand("move-left", "move", "")]
     public void MoveLeft()
     {
         Vector2 pos = transform.position;
@@ -70,7 +76,7 @@ public class PlayerMovement : MonoBehaviour
         transform.position = pos;
     }
 
-    [ConsoleCommand("move-right")]
+    [ConsoleCommand("move-right", "move", "")]
     public void MoveRight()
     {
         Vector2 pos = transform.position;
