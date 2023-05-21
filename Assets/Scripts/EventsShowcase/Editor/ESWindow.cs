@@ -9,6 +9,7 @@ public class ESWindow : EditorWindow
 {
     static ESWindow window;
     public static VisualElement root;
+    private bool madeReload = false;
 
     private List<VisualElement> commandParametersInputs;
 
@@ -251,7 +252,12 @@ public class ESWindow : EditorWindow
         {
             UES.EventManager.Instance.FullEventsReload(delegate { UpdateEventsList(); });
         };
+    }
 
-        UpdateEventsList();
+    private void OnEnable()
+    {
+
+        UES.EventManager.Instance.FullEventsReload(null);
+        madeReload = true;
     }
 }
