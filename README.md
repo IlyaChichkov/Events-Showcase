@@ -5,7 +5,7 @@ UES is a editor extension allowing you run any object method from editor window 
 <p style="margin-top: 60px"></p>
 
 <div style="display: flex; justify-content: center; align-items: center; flex-direction: column">
-    <img src="/Packages/EventShowcase/Images/preview.png" width="520px"></img>
+    <img src="Packages/EventsShowcase/Images/preview.png" width="520px"></img>
     <div style="margin-top: 4px; font-style: italic; font-size: 14px; color: grey;">UES Window</div>
 </div>
 
