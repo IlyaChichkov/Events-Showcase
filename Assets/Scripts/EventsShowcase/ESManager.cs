@@ -257,7 +257,7 @@ namespace UES
             }
 
             Debug.Log("UES: Full Events Reload Complete.");
-            afterLoadAction.Invoke();
+            afterLoadAction?.Invoke();
 
             Task saveJson = Task.Run(async () =>
             {
