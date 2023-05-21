@@ -1,15 +1,18 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 using UES;
 
 public class PolyMapGenerator : MonoBehaviour
 {
     [SerializeField] private Material triangleMaterial;
     [SerializeField] private Transform mapParent;
-    public int gridSize = 10;
-    public float frequency = 1f;
-    public float amplitude = 1f;
+    [SerializeField] private int gridSize = 10;
+    [SerializeField] private float frequency = 1f;
+    [SerializeField] private float amplitude = 1f;
+    [SerializeField] private int linesCount = 3;
+    [SerializeField] private float lineRangeEps = 1f;
 
     [ConsoleCommand("generate-map", "map", "")]
     void GeneratePerlinNoise(float frequency, float amplitude)
@@ -34,7 +37,7 @@ public class PolyMapGenerator : MonoBehaviour
             }
         }
 
-        GenerateMeshes(points);
+        GenerateLines(points);
     }
 
     [ConsoleCommand("destroy-map", "map", "")]
@@ -49,7 +52,7 @@ public class PolyMapGenerator : MonoBehaviour
 
 
     [ConsoleCommand("generate-mesh", "map", "")]
-    public Mesh GenerateTriangleMesh(Vector3 point1, Vector3 point2, Vector3 point3)
+    public Mesh GenerateTriangleMesh(Vector3 point1, Vector3 point2, Vector3 point3, int index, int y)
     {
         Mesh mesh = new Mesh();
         mesh.vertices = new Vector3[] { point1, point2, point3 };
@@ -57,7 +60,7 @@ public class PolyMapGenerator : MonoBehaviour
         mesh.RecalculateNormals();
 
         // Create a new game object with a mesh renderer and mesh filter
-        GameObject meshObject = new GameObject("Generated Mesh");
+        GameObject meshObject = new GameObject("Generated Mesh " + index + "; " + y);
         meshObject.transform.SetParent(mapParent);
         meshObject.transform.position = Vector3.zero;
 
@@ -72,11 +75,42 @@ public class PolyMapGenerator : MonoBehaviour
 
     public void GenerateMeshes(Vector3[] points)
     {
+        int index = 0;
+        int skipCellCounter = 1;
         DeleteMap();
         for (int y = 0; y < gridSize * gridSize - gridSize; y++)
         {
-            GenerateTriangleMesh(points[y], points[y + gridSize], points[y + gridSize - 1]);
-            GenerateTriangleMesh(points[y], points[y + 1], points[y + gridSize]);
+            if (skipCellCounter == gridSize)
+            {
+                skipCellCounter = 1;
+                continue;
+            }
+            GenerateTriangleMesh(points[y], points[y + 1], points[y + gridSize], index, y);
+            index++;
+            GenerateTriangleMesh(points[y + 1], points[y + gridSize + 1], points[y + gridSize], index, y);
+            index++;
+            skipCellCounter++;
+        }
+    }
+    public void GenerateLines(Vector3[] points)
+    {
+        float zRange = points.Max(pnt => pnt.y) - points.Min(pnt => pnt.y);
+        Debug.Log(zRange);
+        int index = 0;
+        int skipCellCounter = 1;
+        DeleteMap();
+        for (int y = 0; y < gridSize * gridSize - gridSize; y++)
+        {
+            if (skipCellCounter == gridSize)
+            {
+                skipCellCounter = 1;
+                continue;
+            }
+            GenerateTriangleMesh(points[y], points[y + 1], points[y + gridSize], index, y);
+            index++;
+            GenerateTriangleMesh(points[y + 1], points[y + gridSize + 1], points[y + gridSize], index, y);
+            index++;
+            skipCellCounter++;
         }
     }
 }
