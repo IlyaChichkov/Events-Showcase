@@ -1,0 +1,14 @@
+{
+    "name": "com.ilyachichkov.eventsshowcase",
+    "version": "0.1.0",
+    "displayName": "EventsShowcase",
+    "description": "This package allows you create events at methods with tool's attributes and run in the editor with just a few buttons clicks.",
+    "unity": "2021.3",
+    "unityRelease": "4f1",
+    "licensesUrl": "https://github.com/IlyaChichkov/Events-Showcase/blob/master/LICENSE",
+    "author": {
+        "name": "Ilya Chichkov",
+        "email": "ilya.chichkov.dev@gmail.com"
+    },
+    "type": "tool"
+}
