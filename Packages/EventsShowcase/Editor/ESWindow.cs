@@ -18,7 +18,7 @@ public class ESWindow : EditorWindow
     {
         // Get existing open window or if none, make a new one:
         window = (ESWindow)EditorWindow.GetWindow(typeof(ESWindow));
-        window.titleContent = new GUIContent("Events Showcase 2");
+        window.titleContent = new GUIContent("Events Showcase");
         window.Show();
         Debug.Log("Show");
     }
