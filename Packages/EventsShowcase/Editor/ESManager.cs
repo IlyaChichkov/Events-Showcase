@@ -480,22 +480,22 @@ namespace UES
             return GetCommandEvent(command)?.GetCommandParameters();
         }
     }
-
-    class MyTest
-    {
-        [ConsoleCommand("set")]
-        public void Hello()
+    /*
+        class MyTest
         {
-            Debug.Log("Hello");
-        }
+            [ConsoleCommand("set")]
+            public void Hello()
+            {
+                Debug.Log("Hello");
+            }
 
 
-        [ConsoleCommand("bye")]
-        public void Bye()
-        {
-            Debug.Log("Bye");
-        }
-    }
+            [ConsoleCommand("bye")]
+            public void Bye()
+            {
+                Debug.Log("Bye");
+            }
+        }*/
 }
 
 /*
