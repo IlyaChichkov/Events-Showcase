@@ -8,4 +8,6 @@ Assets
 !Packages/EventsShowcase/*/*/*
 !Packages/EventsShowcase/*/*/*/*
 !Packages/EventsShowcase/*/*/*/*/*
+!README.md
+!LICENSE
 *.meta
